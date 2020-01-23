@@ -37,7 +37,7 @@ ori = orientation.byEuler(-new_eulers(1),-new_eulers(2),-new_eulers(3),'ZYZ',cs)
 ori0=orientation.byEuler(0,0,0,cs);
 
 %% Look at  pattern
-det = detector(RTI.screensize,RTI.screensize,MapData.DD(1),[1-PC_Y,1-PC_X]);
+det = detector(RTI.screensize,RTI.screensize,PC_Z,[1-PC_Y,1-PC_X]);
 % define a cut off function for the detector
 mask = det.S2CutOffMask(0);
 maskHarm = S2FunHarmonic.quadrature(mask);

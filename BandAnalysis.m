@@ -1,8 +1,8 @@
-InputUser.Phases={'Ni_HR','Ni3Al_HR'};
+InputUser.Phases={'Ni','Ni3Al'};
 InputUser.BinFiles={'C:\Users\tpm416\Documents\GitHub\RTM_indexing\masterpatterns\Ni_1024.bin','C:\Users\tpm416\Documents\GitHub\RTM_indexing\masterpatterns\Ni3Al_1024.bin'}; 
 InputUser.cifnames={'C:\Users\tpm416\Documents\GitHub\AstroEBSD\phases\Ni.cif','C:\Users\tpm416\Documents\GitHub\AstroEBSD\phases\Ni3Al.cif'};
-InputUser.ResultsDir='C:\Users\tpm416\Documents\GitHub\GammaPrime_FA\Results';
-InputUser.BA_Dir='C:\Users\tpm416\Documents\GitHub\GammaPrime_FA';
+InputUser.ResultsDir='C:\Users\tpm416\Documents\GitHub\BandAnalysis\Results';
+InputUser.BA_Dir='C:\Users\tpm416\Documents\GitHub\BandAnalysis';
 isHexes={0,0};
 
 Settings_Cor.gfilt=1; %use a high pass filter (1)
@@ -164,9 +164,9 @@ cd('Experimental')
 mkdir(['PCA_Av_',num2str(1)])
 cd(['PCA_Av_',num2str(1)])
 
-NormPats=Av.PCA_Pats;
-%NormPats=ExpPats-ones(size(ExpPats)).*mean(ExpPats,[1,2]); mean should already be zero
-NormPats=NormPats./std(NormPats,1,[1,2]);
+ExpPats=Av.PCA_Pats;
+NormPats=ExpPats-ones(size(ExpPats)).*mean(ExpPats,[1,2]);
+%NormPats=NormPats./std(NormPats,1,[1,2]);
 %Now multiply by the singular values (lengths of coefficient vectors)
 %NormPats=NormPats.*reshape((ML.coefflengths_PCA(:,i)),1,1,5);%all variances, i'th spatial localisation
 [Sphere.(['psi_pats_Average_PCA_',num2str(1)]),~]=Spherical_Experiments(NormPats,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere);
@@ -176,9 +176,9 @@ cd('Experimental')
 mkdir(['NMF_av_',num2str(1)])
 cd(['NMF_av_',num2str(1)])
 
-NormPats=Av.NMF_Pats;
-NormPats=NormPats-ones(size(NormPats)).*mean(NormPats,[1,2]); %mean should already be zero
-NormPats=NormPats./std(NormPats,1,[1,2]);
+ExpPats=Av.NMF_Pats;
+NormPats=ExpPats-ones(size(ExpPats)).*mean(ExpPats,[1,2]); 
+%NormPats=NormPats./std(NormPats,1,[1,2]);
 %Now multiply by the singular values (lengths of coefficient vectors)
 %NormPats=NormPats.*reshape((ML.coefflengths_PCA(:,i)),1,1,5);%all variances, i'th spatial localisation
 [Sphere.(['psi_pats_Average_NMF_',num2str(1)]),~]=Spherical_Experiments(NormPats,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere);
@@ -266,17 +266,19 @@ mkdir(['AvPats_SimulationCom_spatial',num2str(n)])
 cd(['AvPats_SimulationCom_spatial',num2str(n)])
 SpherComp=Sphere.(['psi_pats_Average_PCA_',num2str(n)]);
 kernels=[Sphere.psi_pats(1,:);Sphere.psi_pats(2,:);SpherComp(1,:);SpherComp(2,:)]; %gamma, gamma prime, %NMF factor
-list_names={'Ni','Ni_3Al', 'Ni_3Al Exp ','Ni Exp'};
+list_names={'Ni','Ni_3Al', 'Ni Exp ','Ni_3Al Exp'};
 PlotPatterns(h,hnames,kernels,['AvPCA_SimComp'],list_names,[-0.3,0.3],1)
 
+%NMF
 cd(InputUser.resultsfolder)
 mkdir(['AvPats_SimulationCom_spatial',num2str(n)])
 cd(['AvPats_SimulationCom_spatial',num2str(n)])
 SpherComp=Sphere.(['psi_pats_Average_NMF_',num2str(n)]);
 kernels=[Sphere.psi_pats(1,:);Sphere.psi_pats(2,:);SpherComp(1,:);SpherComp(2,:)]; %gamma, gamma prime, %NMF factor
-list_names={'Ni','Ni_3Al','Ni_3Al Exp ','Ni Exp'};
+list_names={'Ni','Ni_3Al','Ni Exp ','Ni_3Al Exp'};
 PlotPatterns(h,hnames,kernels,['AvNMF_SimComp'],list_names,[-0.3,0.3],1)
 
+%% Compare diffs in averages to simulation
 cd(InputUser.resultsfolder)
 mkdir(['AvPats_SimulationCom_spatial',num2str(n)])
 cd(['AvPats_SimulationCom_spatial',num2str(n)])
