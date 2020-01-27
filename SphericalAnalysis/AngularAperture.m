@@ -51,6 +51,7 @@ if plotting==1
     plot(pHarm,'pcolor','resolution',0.25*degree,'upper','complete')
     colormap('gray')
     circle(ori*h.symmetrise,'linecolor','r','LineWidth',1.5)
+    print(gcf,['Bands_',char(h),'.png'],'-r300')
     
     minval=-0.3;
     maxval=0.3;
@@ -67,6 +68,7 @@ if plotting==1
     patch([90-delta 90+delta 90+delta 90-delta],[-0.3 -0.3 0.3 0.3],'r','EdgeColor','None')
     alpha(0.5)
     set(gca,'children',flipud(get(gca,'children')))
+    print(gcf,['AngularAperture_',char(h),'.png'],'-r300')
 end
     
 end

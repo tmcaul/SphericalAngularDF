@@ -64,7 +64,7 @@ Refine.print=1;
 
 t1=clock;
 pTime('Starting PC refinement',t1);
-[Refine]=PC_refine(Eulers,Refine,PC_start,RefPatCor,MicroscopeData,RTI,InputUser);
+[Refine]=PC_refine(Eulers,Refine,PC_start,RefPatCor,MicroscopeData,RTI,InputUser.Phases{1});
 pTime(['PC refined: ',num2str(100* Refine.Increase),'% increase'],t1);
 
 clear Eulers

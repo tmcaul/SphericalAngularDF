@@ -1,4 +1,4 @@
-function [Refine]=PC_refine(Eulers,Refine,PC_start,RefPatCor,MicroscopeData,RTI,InputUser)
+function [Refine]=PC_refine(Eulers,Refine,PC_start,RefPatCor,MicroscopeData,RTI,PhaseInput)
 
 ss=Refine.ss;
 
@@ -56,10 +56,11 @@ InputPats=RefPatCor;
 %% Run the RTI
 
 
-phase=1;
-InputUser.Phase_Input=InputUser.Phases(phase);
-cs=loadCIF(InputUser.Phases{phase});
-[ Crystal_UCell,Crystal_Family,Crystal_LUT,Settings_LUT,num_Phases, RTI_info ] = Phase_Builder_RTI( InputUser.Phase_Input,RTI.Phase_Folder, RTI.Bin_loc );
+%phase=1;
+%InputUser.Phase_Input=InputUser.Phases(phase);
+
+cs=loadCIF(PhaseInput);
+[ Crystal_UCell,Crystal_Family,Crystal_LUT,Settings_LUT,num_Phases, RTI_info ] = Phase_Builder_RTI( {PhaseInput},RTI.Phase_Folder, RTI.Bin_loc );
 [screen_int,facedata] = Cube_Generate(RTI_info.bin_file,RTI_info.isHex);
 
 [ SettingsXCF, correction, SettingsXCF2 ] = FFT_Filter_settings( RTI.screensize, RTI.LPTsize );
@@ -157,10 +158,10 @@ else
 
     InputPats=RefPatCor;
 
-    phase=1;
-    InputUser.Phase_Input=InputUser.Phases(phase);
-    cs=loadCIF(InputUser.Phases{phase});
-    [ Crystal_UCell,Crystal_Family,Crystal_LUT,Settings_LUT,num_Phases, RTI_info ] = Phase_Builder_RTI( InputUser.Phase_Input,RTI.Phase_Folder, RTI.Bin_loc );
+    %phase=1;
+    %InputUser.Phase_Input=InputUser.Phases(phase);
+    cs=loadCIF(PhaseInput);
+    [ Crystal_UCell,Crystal_Family,Crystal_LUT,Settings_LUT,num_Phases, RTI_info ] = Phase_Builder_RTI( {PhaseInput},RTI.Phase_Folder, RTI.Bin_loc );
     [screen_int,facedata] = Cube_Generate(RTI_info.bin_file,RTI_info.isHex);
 
     [ SettingsXCF, correction, SettingsXCF2 ] = FFT_Filter_settings( RTI.screensize, RTI.LPTsize );
