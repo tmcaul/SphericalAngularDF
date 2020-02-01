@@ -83,36 +83,23 @@ master = S2FunHandle(@(v) Cube_Sample(v.x(:),v.y(:),v.z(:),screen_int,0));
 masterHarm = S2FunHarmonicSym.quadrature(master,cs,'bandwidth',50); %run to initialise
 
 %% Virtual imaging for a group of plane families and functions:
-for testno=1:12
-disp(['Starting test ',num2str(testno),' of 12']);
-%% Image specific settings
+%first delta was 2.5
+delta=5; %acquistion window
+SamplingNum=10000;
 
-delta=2.5; %search window
+%Define bands to operate on
+h1=Miller({1,1,1},cs);
+h2=Miller({1,1,0},cs);
+h3=Miller({1,0,0},cs);
+h4=Miller({1,3,1},cs);
+h_set=[h1,h2,h3,h4];
 
-%Choose which band to operate on
-switch testno
-    case {1,2,3}
-        h=Miller({1,1,1},cs); %2h 40min each
-    case {4,5,6}
-        h=Miller({1,1,0},cs); %3h 56min each
-    case {7,8,9}
-        h=Miller({1,0,0},cs); %2h each
-    case {10,11,12}
-        h=Miller({1,3,1},cs);
-end
+%% Get the profiles for a given set of bands for the full map
+for testno=1:length(h)
+disp(['Starting analysis ',num2str(testno),' of ',num2str(length(h_set))]);
 
-%Choose the operating function
-switch testno
-    case {1,4,7,10}
-        VIm_fn=@(I) max(I);
-        label='max';
-    case {2,5,8,11}
-        VIm_fn=@(I) range(I);
-        label='range';
-    case {3,6,9,12}
-        VIm_fn=@(I) sum(I);
-        label='sum';
-end
+%Grab the right band
+h=h_set(testno);
 
 %% Plot for one pattern and show the highlighted region
 cd('C:\Users\tpm416\Documents\GitHub\BandAnalysis\Results\Results_yprime3')
@@ -121,65 +108,60 @@ cd('VirtualImages')
 
 [ RefPat ] = bReadEBSP(EBSPData,1);
 [ RefPat_cor] = EBSP_BGCor( RefPat,Settings_Cor );
-[I,sample]=AngularAperture(RefPat_cor,delta,h,cs,Refine.PC_out,OriMatrix,1);
+[I,sample]=AngularAperture(RefPat_cor,delta,SamplingNum,h,cs,Refine.PC_out,OriMatrix,1);
 
 %% Load the data and do the angular aperturing, then apply the defined function (PARALLEL)
 rows=Data_InputMap.ypts;cols=Data_InputMap.xpts;
-VImage=zeros(rows,cols);
+Profile=zeros(rows,cols,SamplingNum);
 t1=clock;
 
-pTime('Starting virtual image calculation...',t1);
+pTime('Starting profile calculation...',t1);
 for i=1:rows
     parfor j=1:cols
         pattern_number=Data_InputMap.PMap(i,j);
         [ RefPat ] = bReadEBSP(EBSPData,pattern_number);
         [ RefPat_cor] = EBSP_BGCor( RefPat,Settings_Cor );
-        [I,sample]=AngularAperture(RefPat_cor,delta,h,cs,Refine.PC_out,OriMatrix,0); %get the angular profile
-        VImage(i,j)=VIm_fn(I); %apply the function
+        
+        %Get the profile
+        [Profile(i,j,:),sample]=AngularAperture(RefPat_cor,delta,SamplingNum,h,cs,Refine.PC_out,OriMatrix,0); %get the angular profile
+        
     end
     pTime(['Completed row ',num2str(i),' of ',num2str(rows)],t1);
 end
-
-figure
-imagesc(VImage)
 
 band=char(h);
-Results.(['Image_',band(2:end-1),'_',label])=VImage;
-clear VImage band
+Results.(['Profile_',band(2:end-1)])=Profile;
+clear VImage band MinimaMaps MaximaMaps
 end
-%Ims.[]=VImage;
+save('Results.mat','Results','Refine');
 
-%% Single virtual image
-cd('C:\Users\tpm416\Documents\GitHub\BandAnalysis\Results\Results_yprime3')
-mkdir('VirtualImages')
-cd('VirtualImages')
+%% Apply a specific functions
 
-h=Miller({1,1,1},cs); %Band to operate on
-VIm_fn=@(I) max(I); %Function
-delta=2.5; %search window
+%Define the operating function and the dataset to be used
+VIm_fn=@(I) sum(I);
+I=Results.Profile_111;
 
-[ RefPat ] = bReadEBSP(EBSPData,1);
-[ RefPat_cor] = EBSP_BGCor( RefPat,Settings_Cor );
-[I,sample]=AngularAperture(RefPat_cor,delta,h,cs,Refine.PC_out,OriMatrix,1);
-
-% Load the data and do the angular aperturing, then apply the defined function (PARALLEL)
-rows=Data_InputMap.ypts;cols=Data_InputMap.xpts;
+% Apply the defined function
 VImage=zeros(rows,cols);
-t1=clock;
-
-pTime('Starting virtual image calculation...',t1);
-for i=1:rows
-    parfor j=1:cols
-        pattern_number=Data_InputMap.PMap(i,j);
-        [ RefPat ] = bReadEBSP(EBSPData,pattern_number);
-        [ RefPat_cor] = EBSP_BGCor( RefPat,Settings_Cor );
-        [I,sample]=AngularAperture(RefPat_cor,delta,h,cs,Refine.PC_out,OriMatrix,0); %get the angular profile
-        VImage(i,j)=VIm_fn(I); %apply the function
+for i =1:rows
+    for j=1:cols
+        VImage(i,j)=VIm_fn(I(i,j));
     end
-    pTime(['Completed row ',num2str(i),' of ',num2str(rows)],t1);
 end
 
-figure
-imagesc(VImage)
+%% Map width of separation (used on 111)
 
+I=Results.Profile_111;
+n_max=2;
+
+VImage=zeros(rows,cols);
+for i=1:rows
+    for j=1:cols
+        
+        [p,l]=findpeaks(squeeze(-I(i,j,:)),'SortStr','descend','NPeaks',n_max);
+        diff=l(1)-l(2);
+        VImage(i,j)=diff; %save the locations
+    
+    end
+end
 

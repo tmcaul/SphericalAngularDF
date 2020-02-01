@@ -1,4 +1,4 @@
-function [I,sample]=AngularAperture(pat,delta,h,cs,PC,OriMatrix,plotting)
+function [I,sample]=AngularAperture(pat,delta,Sampling,h,cs,PC,OriMatrix,plotting)
 
 PC_X=PC(1);
 PC_Y=PC(2);
@@ -25,7 +25,7 @@ end
 
 % Calculation of the profile
 %generate the inputs to the spherical evaluation
-x = linspace(-1,1,1000);
+x = linspace(-1,1,Sampling);
 input = acos(x)./degree;
 
 %check if there is only one symmetrically equivalent band
@@ -41,7 +41,7 @@ end
 %% Now have intensity profile as function of input angle, so can perform function
 
 %sample points
-sample=linspace(90-delta,90+delta,100);
+sample=linspace(90-delta,90+delta,Sampling);
 I=interp1(input,y_av,sample);
 
 %% Plot the boundaries if required
@@ -51,7 +51,7 @@ if plotting==1
     plot(pHarm,'pcolor','resolution',0.25*degree,'upper','complete')
     colormap('gray')
     circle(ori*h.symmetrise,'linecolor','r','LineWidth',1.5)
-    print(gcf,['Bands_',char(h),'.png'],'-r300')
+    print(gcf,['Bands_',char(h)],'-dpng','-r300')
     
     minval=-0.3;
     maxval=0.3;
@@ -68,7 +68,7 @@ if plotting==1
     patch([90-delta 90+delta 90+delta 90-delta],[-0.3 -0.3 0.3 0.3],'r','EdgeColor','None')
     alpha(0.5)
     set(gca,'children',flipud(get(gca,'children')))
-    print(gcf,['AngularAperture_',char(h),'.png'],'-r300')
+    print(gcf,['AngularAperture_',char(h),'_',strrep(num2str(delta),'.',',')],'-dpng','-r300')
 end
     
 end
