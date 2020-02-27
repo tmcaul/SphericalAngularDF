@@ -59,7 +59,9 @@ InputPats=RefPatCor;
 %phase=1;
 %InputUser.Phase_Input=InputUser.Phases(phase);
 
-cs=loadCIF(PhaseInput);
+[ ~,~,~,~,~, RTI_info ] = Phase_Builder_RTI( {PhaseInput},RTI.Phase_Folder, RTI.Bin_loc );
+cs=loadCIF(RTI_info.cif_file);
+
 [ Crystal_UCell,Crystal_Family,Crystal_LUT,Settings_LUT,num_Phases, RTI_info ] = Phase_Builder_RTI( {PhaseInput},RTI.Phase_Folder, RTI.Bin_loc );
 [screen_int,facedata] = Cube_Generate(RTI_info.bin_file,RTI_info.isHex);
 
@@ -160,7 +162,7 @@ else
 
     %phase=1;
     %InputUser.Phase_Input=InputUser.Phases(phase);
-    cs=loadCIF(PhaseInput);
+    cs=loadCIF(RTI_info.cif_file);
     [ Crystal_UCell,Crystal_Family,Crystal_LUT,Settings_LUT,num_Phases, RTI_info ] = Phase_Builder_RTI( {PhaseInput},RTI.Phase_Folder, RTI.Bin_loc );
     [screen_int,facedata] = Cube_Generate(RTI_info.bin_file,RTI_info.isHex);
 

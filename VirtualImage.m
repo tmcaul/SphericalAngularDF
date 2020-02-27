@@ -85,6 +85,7 @@ masterHarm = S2FunHarmonicSym.quadrature(master,cs,'bandwidth',50); %run to init
 %% Virtual imaging for a group of plane families and functions:
 %first delta was 2.5
 delta=5; %acquistion window
+
 SamplingNum=10000;
 
 %Define bands to operate on
@@ -93,6 +94,8 @@ h2=Miller({1,1,0},cs);
 h3=Miller({1,0,0},cs);
 h4=Miller({1,3,1},cs);
 h_set=[h1,h2,h3,h4];
+
+lambda=6.626e-24/(2*9.109e-31*1.602e-19*20000)^0.5; % in angstroms
 
 %% Get the profiles for a given set of bands for the full map
 for testno=1:length(h)
@@ -108,7 +111,7 @@ cd('VirtualImages')
 
 [ RefPat ] = bReadEBSP(EBSPData,1);
 [ RefPat_cor] = EBSP_BGCor( RefPat,Settings_Cor );
-[I,sample]=AngularAperture(RefPat_cor,delta,SamplingNum,h,cs,Refine.PC_out,OriMatrix,1);
+[I,sample]=AngularAperture(RefPat_cor,delta,SamplingNum,h,cs,Refine.PC_out,OriMatrix,1,lambda);
 
 %% Load the data and do the angular aperturing, then apply the defined function (PARALLEL)
 rows=Data_InputMap.ypts;cols=Data_InputMap.xpts;
@@ -123,7 +126,7 @@ for i=1:rows
         [ RefPat_cor] = EBSP_BGCor( RefPat,Settings_Cor );
         
         %Get the profile
-        [Profile(i,j,:),sample]=AngularAperture(RefPat_cor,delta,SamplingNum,h,cs,Refine.PC_out,OriMatrix,0); %get the angular profile
+        [Profile(i,j,:),sample]=AngularAperture(RefPat_cor,delta,SamplingNum,h,cs,Refine.PC_out,OriMatrix,0,lambda); %get the angular profile
         
     end
     pTime(['Completed row ',num2str(i),' of ',num2str(rows)],t1);
@@ -133,25 +136,43 @@ band=char(h);
 Results.(['Profile_',band(2:end-1)])=Profile;
 clear VImage band MinimaMaps MaximaMaps
 end
-save('Results.mat','Results','Refine');
+save('Results.mat','Results','delta','Refine','-v7.3');
 
+%%
+cd('C:\Users\tpm416\Documents\GitHub\BandAnalysis\Results\Results_yprime3\VirtualImages')
+load('Results.mat')
 %% Apply a specific functions
 
 %Define the operating function and the dataset to be used
 VIm_fn=@(I) sum(I);
-I=Results.Profile_111;
+
+Band={'111','110','100','131'};
+bragg_delta=asin(lambda./(2.*h_set.dspacing))*180/pi; % in degrees
+widths=bragg_delta./(5/10000); %number of points in the Bragg width
+
+for bandno = 1:4
+I=Results.(['Profile_',Band{bandno}]);
+rows=size(I,1);
+cols=size(I,2);
 
 % Apply the defined function
 VImage=zeros(rows,cols);
 for i =1:rows
     for j=1:cols
-        VImage(i,j)=VIm_fn(I(i,j));
+        VImage(i,j)=VIm_fn(I(i,j,round(5000-widths(bandno)):round(5000+widths(bandno))));
     end
+end
+
+cmap=cbrewer('seq','YlOrRd',1000);
+imagesc(VImage)
+colormap(cmap)
+axis image off;
+print(gcf,['BraggSum_',Band{bandno}],'-dpng','-r300')
 end
 
 %% Map width of separation (used on 111)
 
-I=Results.Profile_111;
+I=Results.Profile_131;
 n_max=2;
 
 VImage=zeros(rows,cols);
@@ -159,9 +180,25 @@ for i=1:rows
     for j=1:cols
         
         [p,l]=findpeaks(squeeze(-I(i,j,:)),'SortStr','descend','NPeaks',n_max);
-        diff=l(1)-l(2);
+        diff=abs(l(2)-l(1));
         VImage(i,j)=diff; %save the locations
     
     end
 end
+
+cmap=cbrewer('seq','YlOrRd',1000);
+imagesc(VImage)
+colormap(cmap)
+axis image off;
+print(gcf,'PeakSep_131','-dpng','-r300')
+
+%%
+I=squeeze(Results.Profile_111(1,1,:));
+L=length(I);
+F=abs(fft(I)/L);
+F1 = F(1:L/2+1);
+F1(2:end-1) = 2*F1(2:end-1);
+
+
+
 

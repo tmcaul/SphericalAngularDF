@@ -1,5 +1,18 @@
 
-function []=PlotPatterns(h,hnames,psi_pats,label,leg,ylimits,saving)
+function []=PlotPatterns(h,psi_pats,label,leg,ylimits,saving,varargin)
+
+if size(varargin,1)>0
+    Settings=varargin{:};
+    LS=Settings.LS;
+    LC=Settings.LC;
+end
+
+%Grab hnames
+for i=1:length(h)
+    bandname=char(h(i));
+    bandname=bandname(2:end-1);
+    hnames{i}=['{',bandname,'}'];
+end
 
 % Plot band profiles
 %for single, unrotated pat, rotated planes
@@ -19,11 +32,22 @@ for i = 1:length(h)
         p=psi_pats{phase,i};
         
         if iscell(p)
-            SymmAvPlot(p,'DisplayName',char(h(i)),'linewidth',1,'LineStyle','-')
+            SymmAvPlot(p,'DisplayName',char(h(i)),'linewidth',1.5,'LineStyle','-')
         else
-            SymmAvPlot(p,'DisplayName',char(h(i)),'linewidth',1,'LineStyle','-')
+            SymmAvPlot(p,'DisplayName',char(h(i)),'linewidth',1.5,'LineStyle','-')
         end
         hold on
+        
+        if exist('LS')==1
+            line = findobj(gcf, 'type', 'line');
+            set(line(1),'LineStyle',LS{phase});
+        end
+        
+        if exist('LC')==1
+            line = findobj(gcf, 'type', 'line');
+            set(line(1),'Color',LC{phase});
+        end
+        
     end
     
     legend(leg)

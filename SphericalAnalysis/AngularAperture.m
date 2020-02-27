@@ -1,4 +1,4 @@
-function [I,sample]=AngularAperture(pat,delta,Sampling,h,cs,PC,OriMatrix,plotting)
+function [I,sample]=AngularAperture(pat,delta,Sampling,h,cs,PC,OriMatrix,plotting,lambda)
 
 PC_X=PC(1);
 PC_Y=PC(2);
@@ -47,6 +47,9 @@ I=interp1(input,y_av,sample);
 %% Plot the boundaries if required
 if plotting==1
     
+    bragg_delta=asin(lambda./(2.*h.dspacing))*180/pi; % in degrees
+    width=bragg_delta./(delta/Sampling); %number of points in the Bragg width
+
     figure
     plot(pHarm,'pcolor','resolution',0.25*degree,'upper','complete')
     colormap('gray')
@@ -58,7 +61,7 @@ if plotting==1
 
     % Highlight a region
     figure
-    plot(input,y_av,'LineWidth',1)
+    plot(input,y_av,'LineWidth',2)
     xlim([80,100])
     ylim([-0.3,0.3])
 
@@ -68,6 +71,12 @@ if plotting==1
     patch([90-delta 90+delta 90+delta 90-delta],[-0.3 -0.3 0.3 0.3],'r','EdgeColor','None')
     alpha(0.5)
     set(gca,'children',flipud(get(gca,'children')))
+    hold on
+    lower=round(Sampling/2-width/2);
+    upper=round(Sampling/2+width/2);
+    plot([sample(lower);sample(upper)],[I(lower);I(upper)],'ko','MarkerSize',5,'MarkerFaceColor','k')
+    
+    
     print(gcf,['AngularAperture_',char(h),'_',strrep(num2str(delta),'.',',')],'-dpng','-r300')
 end
     

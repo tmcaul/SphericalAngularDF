@@ -1,10 +1,10 @@
-function [psi_full,psi_pats,psi_pats_Rot]=Spherical_Phases(InputUser,RTI,MapData,PC,crystals,Sphere)
+function [psi_full,psi_pats,psi_pats_Rot]=Spherical_Phases(h,InputUser,RTI,MapData,PC,crystals,Sphere,rottoplot,Label)
 
-for phase=1:length(InputUser.Phases)
+for phase=1:length(crystals)
 
 %cd(InputUser.resultsfolder)
 homefol=pwd;
-expfolder=['Phase_',num2str(phase)];
+expfolder=[Label,'_Phase_',num2str(phase)];
 mkdir(expfolder)
 cd(expfolder)
 resultsfolder=pwd;
@@ -12,8 +12,14 @@ resultsfolder=pwd;
 
     
 cs=crystals{phase};
-h = Miller({1,0,0},{1,1,0},{1,3,1},{1,1,1},cs);%{2,0,0},{1,1,2},{1,2,3},cs);
-hnames = {'{1,0,0}','{1,1,0}','{1,3,1}','{1,1,1}'};%,'{2,0,0}','{1,1,2}','{1,2,3}'};
+%h = Miller({1,0,0},{1,1,0},{1,3,1},{1,1,1},cs);%{2,0,0},{1,1,2},{1,2,3},cs);
+for i=1:length(h)
+    bandname=char(h(i));
+    bandname=bandname(2:end-1);
+    hnames{i}=['{',bandname,'}'];
+end
+    
+Sphere.h=h;
     
 %% Define some interesting bands for summing
 InputUser.Phase_Input=InputUser.Phases(phase);
@@ -39,7 +45,7 @@ PatternInfo.ScreenWidth=RTI.screensize;
 PatternInfo.ScreenHeight=RTI.screensize;
 %locs=1;
 [ EBSP_pat ] = EBSP_Gnom( PatternInfo,PC);
-[ pat ] = EBSP_gen( EBSP_pat,Sphere.rottoplot,screen_int,RTI_info.isHex );
+[ pat ] = EBSP_gen( EBSP_pat,rottoplot,screen_int,RTI_info.isHex );
 
 pat=(pat-mean(pat(:)))/std(pat(:));
 
@@ -52,7 +58,7 @@ pat=(pat-mean(pat(:)))/std(pat(:));
     
 
 %% Get the correct orientation for MTEX
-new_eulers=conv_G_to_EA(Sphere.rottoplot);
+new_eulers=conv_G_to_EA(rottoplot);
 ori = orientation.byEuler(-new_eulers(1),-new_eulers(2),-new_eulers(3),'ZYZ',cs);
 %ori = orientation.byEuler(-phi1,-PHI,-phi2,'ZYZ',cs);
 ori0=orientation.byEuler(0,0,0,cs);
