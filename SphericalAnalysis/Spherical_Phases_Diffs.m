@@ -39,7 +39,7 @@ master = S2FunHandle(@(v) Cube_Sample(v.x(:),v.y(:),v.z(:),screen_int,0));
 %masterHarm = S2FunHarmonicSym.quadrature(master,cs,'bandwidth',50); %run to initialise
 masterHarm = S2FunHarmonicSym.quadrature(master,cs,'bandwidth',512);
 
-[ Crystal_UCell,Crystal_Family,Crystal_LUT,Settings_LUT,num_Phases, RTI_info ] = Phase_Builder_RTI( InputUser.Phase_Input,RTI.Phase_Folder, RTI.Bin_loc );
+[ Crystal_UCell,Crystal_Family,Crystal_LUT,Settings_LUT,num_Phases, RTI_info ] = Phase_Builder_RTM( InputUser.Phase_Input,RTI.Phase_Folder);
 [screen_int,facedata] = Cube_Generate(RTI_info.bin_file,RTI_info.isHex);
 
 PatternInfo.ScreenWidth=RTI.screensize;

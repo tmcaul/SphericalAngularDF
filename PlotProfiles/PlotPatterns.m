@@ -1,4 +1,4 @@
-
+%TPM 2020
 function []=PlotPatterns(h,psi_pats,label,leg,ylimits,saving,varargin)
 
 if size(varargin,1)>0

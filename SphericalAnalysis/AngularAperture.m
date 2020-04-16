@@ -1,3 +1,4 @@
+%TPM
 function [I,sample]=AngularAperture(pat,delta,Sampling,h,cs,PC,OriMatrix,plotting,lambda)
 
 PC_X=PC(1);

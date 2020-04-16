@@ -1,12 +1,15 @@
+%% TPM 2020
+%set(groot, 'defaultAxesFontName','Helvetica')
+%set(groot, 'defaultAxesFontSize',12)
+
 InputUser.Phases={'CoNi_HR','Co3AlW_HR','Ni_HR','Ni3Al_HR'};
 InputUser.PhaseLabels={'CoNi','Co_3AlW','Ni','Ni_3Al'};
 
-InputUser.BinFiles={'C:\Users\tpm416\Documents\GitHub\RTM_indexing\masterpatterns\CoNi_HR.bin','C:\Users\tpm416\Documents\GitHub\RTM_indexing\masterpatterns\Co3AlW_HR.bin'}; 
-InputUser.cifnames={'C:\Users\tpm416\Documents\GitHub\AstroEBSD\phases\CoNi.cif','C:\Users\tpm416\Documents\GitHub\AstroEBSD\phases\Co3AlW.cif'};
-InputUser.ResultsDir='C:\Users\tpm416\Documents\GitHub\BandAnalysis\Results';
+InputUser.ResultsDir='C:\Users\tpm416\Documents\GammaPrime_SphericalAnalysis\Results';
 InputUser.BA_Dir='C:\Users\tpm416\Documents\GitHub\BandAnalysis';
-isHexes={0,0};
+InputUser.GPrime_Dir='C:\Users\tpm416\Documents\GammaPrime_SphericalAnalysis';
 
+%% Settings
 Settings_Cor.gfilt=1; %use a high pass filter (1)
 Settings_Cor.gfilt_s=4; %low pass filter sigma (4)
 Settings_Cor.radius=0; %use a radius mask (0)
@@ -23,28 +26,28 @@ Settings_Cor.SquareCrop=1; %(1)
 Settings_Cor.LineError=1; %(1)
 Settings_Cor.MeanCentre=1; %(1)
 
-RTI.Bin_loc='C:\Users\tpm416\Documents\GitHub\RTM_indexing\masterpatterns';
+%RTI settings
 RTI.Phase_Folder='C:\Users\tpm416\Documents\GitHub\AstroEBSD\phases';
 RTI.screensize=Settings_Cor.size;
 RTI.Sampling_Freq=8; %of SO3 space
-RTI.XCF_type=2; %will be removed
 RTI.iterations=4;
 RTI.LPTsize=500;
 
+%add bits to path
 run('C:\Users\tpm416\Documents\GitHub\AstroEBSD\start_AstroEBSD')
-run('C:\Users\tpm416\Documents\GitHub\RTM_indexing\start_RTI')
-run('C:\Users\tpm416\Documents\GitHub\EBSD-EDS_PCA\start_PCA')
 run('C:\Communal_MatlabPlugins\mtex-5.2.beta2\startup_mtex')
 
+%need the chebyshev functions
 addpath('C:\Users\tpm416\Documents\GitHub\chebfun-master')
 
 %add Band analysis directories to path
-addpath(addpath([InputUser.BA_Dir,'\DataLoading']))
-addpath(addpath([InputUser.BA_Dir,'\EulerAngle_checking']))
+addpath(addpath([InputUser.GPrime_Dir,'\DataLoading']))
+addpath(addpath([InputUser.GPrime_Dir,'\EulerAngle_checking']))
+
 addpath(addpath([InputUser.BA_Dir,'\PlotProfiles']))
 addpath(addpath([InputUser.BA_Dir,'\SphericalAnalysis']))
 
-%% Load, index and refine an experimental pattern
+%% Load a single experimental pattern for PC optimisation
 InputUser.HDF5_file='yprime3.h5';
 InputUser.HDF5_folder='E:\Tom\GammaPrime_Data\V208C';
 [ MapData,MicroscopeData,~,EBSPData ]=bReadHDF5( InputUser );
@@ -57,16 +60,14 @@ InputUser.HDF5_folder='E:\Tom\GammaPrime_Data\V208C';
 %% Set up crystal symmetry and bands to index
 
 for i=1:length(InputUser.Phases)
-    [ ~,~,~,~,~, RTI_info ] = Phase_Builder_RTI(InputUser.Phases(i),RTI.Phase_Folder, RTI.Bin_loc );
+    [ ~,~,~,~,~, RTI_info ] = Phase_Builder_RTM(InputUser.Phases(i),RTI.Phase_Folder);
     InputUser.BinFiles{1,i}=RTI_info.bin_file;
     InputUser.cifnames{1,i}=RTI_info.cif_file;
     crystals{i}=loadCIF(RTI_info.cif_file);
 end
 
-cs=crystals{2};
-h = Miller({1,0,0},{1,1,0},{1,3,1},{1,1,1},cs);
 
-%%
+%% Single PC refinement (nb. TPM original version, not TBB version)
 PC_start=[0.4760,0.2540,0.6136]; %initial value for PC
 Eulers=[17.4*degree,60*degree,32.6*degree]; %initial value for Eulers
 
@@ -82,7 +83,13 @@ pTime('Starting PC refinement',t1);
 pTime(['PC refined: ',num2str(100* Refine.Increase),'% increase'],t1);
 
 clear Eulers
+
 %% Define a band profile
+
+%  Grab a symmetry and set of planes
+cs=crystals{2};
+h = Miller({1,0,0},{1,1,0},{1,3,1},{1,1,1},cs);
+
 % modified Gaussian profile
 Sphere.profile = @(x) 1.5*exp(-(acos(x)-90*degree).^2./(3*degree).^2) - ...
   exp(-(acos(x)-87*degree).^2./(2*degree).^2) - ...
@@ -96,7 +103,6 @@ phi1=Refine.Eulers_out(1);PHI=Refine.Eulers_out(2);phi2=Refine.Eulers_out(3);
 tilt=MicroscopeData.TotalTilt;
 %PC=Refine.PC_out;
 
-%Define all rotation matrices needed in the code
 GMat_test=conv_EA_to_G([phi1,PHI,phi2]);
 Rx=@(theta)[1 0 0;0 cos(theta) sin(theta);0 -sin(theta) cos(theta)]; %x rotation
 Detector_tilt = Rx(tilt);
@@ -130,6 +136,7 @@ cd(InputUser.resultsfolder)
 cd(InputUser.resultsfolder);
 ML_extraction;
 AvPat_extraction;
+AE=Autoencoder_extraction('C:\Users\tpm416\Documents\GammaPrime_Autoencoders\Matlab_Autoencoder\AE_results_270320_kernel3_moresparsity');
 
 %do some manual flips (currently done in VS Code)
 % ML.coeffs_PCA(:,:,1,:)=-ML.coeffs_PCA(:,:,1,:);
@@ -180,30 +187,61 @@ NormPats=NormPats./std(ExpPats,1,[1,2]);
 [Sphere.(['psi_pats_experiment_PCA_',num2str(i)]),~]=Spherical_Experiments(NormPats,h,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere,Sphere.rottoplot);
 end
 
+%% Autoencoder
+cd(InputUser.resultsfolder)
+
+%Normalise stdev to 1, mean to 0
+ExpPats=AE.coeffs;
+NormPats=ExpPats-ones(size(ExpPats)).*mean(ExpPats,[1,2]);
+NormPats=NormPats./std(ExpPats,1,[1,2]);
+
+mkdir(['Autoencoder_',num2str(i)])
+cd(['Autoencoder_',num2str(i)])
+[Sphere.(['psi_pats_experiment_AE_',num2str(i)]),~]=Spherical_Experiments(NormPats,h,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere,Sphere.rottoplot);
+
+
 %% Average patterns
+n=3;
+
+% PCA
 cd(InputUser.resultsfolder)
 cd('Experimental')
-mkdir(['PCA_Av_',num2str(1)])
-cd(['PCA_Av_',num2str(1)])
+mkdir(['PCA_Av_',num2str(n)])
+cd(['PCA_Av_',num2str(n)])
 
 ExpPats=Av.PCA_Pats;
 NormPats=ExpPats-ones(size(ExpPats)).*mean(ExpPats,[1,2]);
 %NormPats=NormPats./std(NormPats,1,[1,2]);
 %Now multiply by the singular values (lengths of coefficient vectors)
 %NormPats=NormPats.*reshape((ML.coefflengths_PCA(:,i)),1,1,5);%all variances, i'th spatial localisation
-[Sphere.(['psi_pats_Average_PCA_',num2str(1)]),~]=Spherical_Experiments(NormPats,h,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere,Sphere.rottoplot);
+[Sphere.(['psi_pats_Average_PCA_',num2str(n)]),~]=Spherical_Experiments(NormPats,h,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere,Sphere.rottoplot);
 
+% NMF
 cd(InputUser.resultsfolder)
 cd('Experimental')
-mkdir(['NMF_av_',num2str(1)])
-cd(['NMF_av_',num2str(1)])
+mkdir(['NMF_av_',num2str(n)])
+cd(['NMF_av_',num2str(n)])
 
 ExpPats=Av.NMF_Pats;
 NormPats=ExpPats-ones(size(ExpPats)).*mean(ExpPats,[1,2]); 
 %NormPats=NormPats./std(NormPats,1,[1,2]);
 %Now multiply by the singular values (lengths of coefficient vectors)
 %NormPats=NormPats.*reshape((ML.coefflengths_PCA(:,i)),1,1,5);%all variances, i'th spatial localisation
-[Sphere.(['psi_pats_Average_NMF_',num2str(1)]),~]=Spherical_Experiments(NormPats,h,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere,Sphere.rottoplot);
+[Sphere.(['psi_pats_Average_NMF_',num2str(n)]),~]=Spherical_Experiments(NormPats,h,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere,Sphere.rottoplot);
+
+% AE
+cd(InputUser.resultsfolder)
+cd('Experimental')
+mkdir(['AE_av_',num2str(n)])
+cd(['AE_av_',num2str(n)])
+
+ExpPats=Av.NMF_Pats;
+NormPats=ExpPats-ones(size(ExpPats)).*mean(ExpPats,[1,2]); 
+%NormPats=NormPats./std(NormPats,1,[1,2]);
+%Now multiply by the singular values (lengths of coefficient vectors)
+%NormPats=NormPats.*reshape((ML.coefflengths_PCA(:,i)),1,1,5);%all variances, i'th spatial localisation
+[Sphere.(['psi_pats_Average_AE_',num2str(n)]),~]=Spherical_Experiments(NormPats,h,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere,Sphere.rottoplot);
+
 
 %% Differences
 NormPats=Av.NMF_Pats(:,:,1)-Av.NMF_Pats(:,:,2);
@@ -211,14 +249,22 @@ NormPats=NormPats-ones(size(NormPats)).*mean(NormPats,[1,2]); %mean should alrea
 NormPats=NormPats./std(NormPats,1,[1,2]);
 %Now multiply by the singular values (lengths of coefficient vectors)
 %NormPats=NormPats.*reshape((ML.coefflengths_PCA(:,i)),1,1,5);%all variances, i'th spatial localisation
-[Sphere.(['psi_pats_Average_NMF_Diff_',num2str(1)]),~]=Spherical_Experiments(NormPats,h,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere,Sphere.rottoplot);
+[Sphere.(['psi_pats_Average_NMF_Diff_',num2str(n)]),~]=Spherical_Experiments(NormPats,h,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere,Sphere.rottoplot);
 
 NormPats=Av.PCA_Pats(:,:,1)-Av.PCA_Pats(:,:,2);
 %NormPats=NormPats-ones(size(NormPats)).*mean(NormPats,[1,2]); %mean should already be zero
 NormPats=NormPats./std(NormPats,1,[1,2]);
 %Now multiply by the singular values (lengths of coefficient vectors)
 %NormPats=NormPats.*reshape((ML.coefflengths_PCA(:,i)),1,1,5);%all variances, i'th spatial localisation
-[Sphere.(['psi_pats_Average_PCA_Diff_',num2str(1)]),~]=Spherical_Experiments(NormPats,h,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere,Sphere.rottoplot);
+[Sphere.(['psi_pats_Average_PCA_Diff_',num2str(n)]),~]=Spherical_Experiments(NormPats,h,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere,Sphere.rottoplot);
+
+NormPats=Av.AE_Pats(:,:,1)-Av.AE_Pats(:,:,2);
+%NormPats=NormPats-ones(size(NormPats)).*mean(NormPats,[1,2]); %mean should already be zero
+NormPats=NormPats./std(NormPats,1,[1,2]);
+%Now multiply by the singular values (lengths of coefficient vectors)
+%NormPats=NormPats.*reshape((ML.coefflengths_PCA(:,i)),1,1,5);%all variances, i'th spatial localisation
+[Sphere.(['psi_pats_Average_AE_Diff_',num2str(n)]),~]=Spherical_Experiments(NormPats,h,InputUser,RTI,MapData,Refine.PC_out,cs,Sphere,Sphere.rottoplot);
+
 
 %% -------PLOTTING-------
 %%
@@ -234,10 +280,10 @@ PlotPatterns(h,Sphere.psi_pats,'Simulation_',InputUser.PhaseLabels,[-0.3,0.3],1,
 PlotPatterns(h,Sphere.psi_full,'GlobalSimulation_',InputUser.PhaseLabels,[-0.3,0.3],1,Settings)
 close all
 
-%% Plot band profiles of some experimental sets - NMF (spatial kernel = 1)
+%% Plot band profiles of some experimental sets - NMF (spatial kernel = 3)
 %kernels=Sphere.psi_pats_experiment([list],:);
 list_names={'NMF1','NMF2','NMF3'};
-PlotPatterns(h,Sphere.psi_pats_experiment_NMF_1,'NMF_local1_',list_names,[-0.3,0.3],1)
+PlotPatterns(h,Sphere.psi_pats_experiment_NMF_3,'NMF_local1_',list_names,[-0.3,0.3],1)
 
 %% Plot band profiles of some experimental sets - NMF (all NMF factor 2, 110, for kernels 1:5)
 kernels=[Sphere.psi_pats_experiment_NMF_1(2,:);Sphere.psi_pats_experiment_NMF_2(2,:);Sphere.psi_pats_experiment_NMF_3(2,:);...
@@ -245,15 +291,19 @@ kernels=[Sphere.psi_pats_experiment_NMF_1(2,:);Sphere.psi_pats_experiment_NMF_2(
 list_names={'Kernel 1','Kernel 2','Kernel 3','Kernel 4', 'Kernel 5'};
 PlotPatterns(h,kernels,'NMF_variedKernel_',list_names,[-0.3,0.3],1)
 
-%% Plot band profiles of some experimental sets - PCA (spatial kernel = 1)
+%% Plot band profiles of some experimental sets - PCA (spatial kernel = 3)
 list_names={'PCA1','PCA2','PCA3','PCA4','PCA5'};
-PlotPatterns(h,Sphere.psi_pats_experiment_PCA_1,'PCA_local1_',list_names,[-0.3,0.3],1)
+PlotPatterns(h,Sphere.psi_pats_experiment_PCA_3,'PCA_local1_',list_names,[-0.3,0.3],1)
 
 %% Plot band profiles of some experimental sets - PCA (all PC2s, 110, for kernels 1:5)
 kernels=[Sphere.psi_pats_experiment_PCA_1(2,:);Sphere.psi_pats_experiment_PCA_2(2,:);Sphere.psi_pats_experiment_PCA_3(2,:);...
     Sphere.psi_pats_experiment_PCA_4(2,:);Sphere.psi_pats_experiment_PCA_5(2,:)];
 list_names={'Kernel 1','Kernel 2','Kernel 3','Kernel 4', 'Kernel 5'};
 PlotPatterns(h,kernels,'PCA_variedKernel_',list_names,[-0.3,0.3],1)
+
+%% Plot AE profiles (spatial kernel=3)
+list_names={'AE1','AE2','AE3','AE4','AE5'};
+PlotPatterns(h,Sphere.psi_pats_experiment_AE_5,'AE_local3_',list_names,[-0.3,0.3],1)
 
 %% Compare NMF to simulation
 for n=1:5
@@ -294,7 +344,7 @@ colours=cbrewer('qual','Paired',10);
 colours(3,:)=colours(7,:);
 colours(4,:)=colours(8,:);
 
-n=1;
+n=3;
 
 %PCA all phases
 cd(InputUser.resultsfolder)
@@ -340,6 +390,17 @@ Settings.LS={':',':','-','-'};
 Settings.LC={colours(1,:),colours(2,:),colours(5,:),colours(6,:)};
 PlotPatterns(h,kernels,['AvNMF_SimComp'],list_names,[-0.3,0.3],1,Settings)
 
+%AE just Co phases
+cd(InputUser.resultsfolder)
+mkdir(['AvPats_SimulationCom_spatial',num2str(n)])
+cd(['AvPats_SimulationCom_spatial',num2str(n)])
+SpherComp=Sphere.(['psi_pats_Average_AE_',num2str(n)]);
+kernels=[Sphere.psi_pats(1,:);Sphere.psi_pats(2,:);SpherComp(1,:);SpherComp(2,:)]; %gamma, gamma prime, %AE factor
+list_names=[InputUser.PhaseLabels(1:2),'\gamma Exp ',"\gamma' Exp"];
+Settings.LS={':',':','-','-'};
+Settings.LC={colours(1,:),colours(2,:),colours(5,:),colours(6,:)};
+PlotPatterns(h,kernels,['AvAE_SimComp'],list_names,[-0.3,0.3],1,Settings)
+
 %% Compare diffs in averages to simulation
 cd(InputUser.resultsfolder)
 mkdir(['AvPats_SimulationCom_spatial',num2str(n)])
@@ -362,6 +423,16 @@ list_names=[InputUser.PhaseLabels(2),InputUser.PhaseLabels(4),'Exp'];
 Settings.LS={'-','-','-'};
 Settings.LC={colours(2,:),colours(4,:),colours(6,:)};
 PlotPatterns(h,kernels,['AvPCA_SimComp_Diff'],list_names,[-0.3,0.3],1,Settings)
+
+% cd(InputUser.resultsfolder)
+% mkdir(['AvPats_SimulationCom_spatial',num2str(n)])
+% cd(['AvPats_SimulationCom_spatial',num2str(n)])
+% SpherComp=Sphere.(['psi_pats_Average_PCA_Diff_',num2str(n)]);
+% kernels=[Sphere.psi_pats(1,:);Sphere.psi_pats(2,:);Sphere.psi_pats(3,:);Sphere.psi_pats(4,:);SpherComp(1,:)];
+% list_names=[InputUser.PhaseLabels(2),InputUser.PhaseLabels(4),'Exp'];
+% Settings.LS={'-','-','-'};
+% Settings.LC={colours(2,:),colours(4,:),colours(6,:)};
+% PlotPatterns_Diff(h,kernels,['AvPCA_SimComp_Diff2'],list_names,[-0.3,0.3],1,Settings)
 
 cd(InputUser.resultsfolder)
 close all
